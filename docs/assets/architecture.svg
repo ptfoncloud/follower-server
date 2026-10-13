@@ -17,7 +17,7 @@
 
   <rect x="55" y="115" width="160" height="60" rx="6" fill="#dbeafe" stroke="#3b82f6"/>
   <text x="135" y="140" text-anchor="middle" font-size="12" font-weight="bold">Pixy2</text>
-  <text x="135" y="156" text-anchor="middle" font-size="10" fill="#475569">color blob + silhouette</text>
+  <text x="135" y="156" text-anchor="middle" font-size="10" fill="#475569">color blob (beacon)</text>
 
   <rect x="240" y="115" width="180" height="60" rx="6" fill="#dbeafe" stroke="#3b82f6"/>
   <text x="330" y="136" text-anchor="middle" font-size="12" font-weight="bold">ESP32</text>
@@ -40,7 +40,7 @@
   <line x1="330" y1="175" x2="330" y2="200" stroke="#dc2626" stroke-width="2" marker-end="url(#arrowRed)"/>
   <text x="345" y="192" font-size="9" fill="#dc2626">MAVLink2, safety-gated</text>
   <line x1="215" y1="230" x2="240" y2="230" stroke="#475569" stroke-width="1.5" marker-end="url(#arrow)"/>
-  <text x="220" y="196" font-size="9" fill="#475569">MAVLink2</text>
+  <text x="220" y="196" font-size="9" fill="#475569">MAVLink1</text>
 
   <!-- RC -->
   <rect x="55" y="140" width="0" height="0"/>

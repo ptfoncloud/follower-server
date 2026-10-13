@@ -2,7 +2,7 @@
 
 ![Python](https://img.shields.io/badge/python-3.11-blue)
 ![OpenCV](https://img.shields.io/badge/OpenCV-4.9-green)
-![Tests](https://img.shields.io/badge/tests-17%2F17-brightgreen)
+![Tests](https://img.shields.io/badge/tests-33%2F33-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
 Runs on Henri. Receives MLX90640 thermal frames from the drone over a
@@ -72,10 +72,13 @@ byte-for-byte.
 python -m pytest tests/ -v
 ```
 
-17 tests, currently passing. `boresight.py`'s angle math is fully unit
+33 tests, currently passing. `boresight.py`'s angle math is fully unit
 tested as pure functions (no I/O); `thermal_tracker.py`'s blob
-detection is tested against synthetic frames, so nothing here needs
-real sensor hardware to verify the logic is correct.
+detection is tested against synthetic frames; the 776-byte wire decoder
+is tested for round trip, size/header rejection and quantization error,
+and against a golden frame produced by the real C++ encoder. Nothing here
+needs sensor hardware. (Neither the UDP listener nor the WebSocket
+broadcaster in `server.py` has an automated test yet.)
 
 ## Known limitations
 
