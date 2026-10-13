@@ -1,13 +1,13 @@
 """
-server.py — the actual "Follower Server" from the resume.
+server.py - follower server.
 
-Two halves running concurrently:
-  1. UDP listener — receives raw thermal frames from the ESP32
-  2. WebSocket broadcaster — pushes computed boresight/target data out
-     to the GCS dashboard, same pattern as the existing telemetry
-     WebSocket in gcs-ground-control, kept consistent on purpose.
+Two parts running at the same time:
+  1. UDP listener, gets thermal frames from the ESP32
+  2. websocket broadcaster, pushes the boresight/target data to the GCS
+     dashboard (same pattern as the telemetry websocket in
+     gcs-ground-control)
 
-Run standalone: `python -m app.server`
+Run: `python -m app.server`
 """
 import asyncio
 import json
@@ -24,8 +24,7 @@ WS_PORT = 14601                  # GCS dashboard connects here for target data
 FRAME_STALE_S = 2.0              # no new frame this long -> report "no target" even
                                   # if the last computed blob was confident
 
-# Shared state between the two halves — last known target, and every
-# connected dashboard websocket to broadcast to.
+# shared between the two halves: last target and the connected dashboards
 _latest_target: dict | None = None
 _last_frame_time: float = 0.0
 _ws_clients: set = set()
@@ -81,7 +80,7 @@ async def ws_handler(websocket):
     log.info(f"Dashboard connected ({len(_ws_clients)} total)")
     try:
         async for _ in websocket:
-            pass  # this channel is output-only; ignore anything a client sends
+            pass  # output only, ignore whatever the client sends
     finally:
         _ws_clients.discard(websocket)
         log.info(f"Dashboard disconnected ({len(_ws_clients)} total)")

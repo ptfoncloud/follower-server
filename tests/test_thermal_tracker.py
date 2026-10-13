@@ -1,7 +1,6 @@
 """
-Tests for frame decoding and blob detection. Uses synthetic frames
-(numpy arrays built in-test) rather than real sensor captures — no
-hardware dependency needed to run these.
+Tests for frame decoding and blob detection. Uses synthetic frames built
+in the test instead of real captures, so no hardware needed.
 """
 from pathlib import Path
 
@@ -12,7 +11,7 @@ from app.thermal_tracker import (
     MLX90640_COLS, MLX90640_ROWS,
 )
 
-# Written by follower-main's C++ encoder:
+# written by follower-main's C++ encoder:
 #   test/native/test_thermal_wire.cpp --golden golden_frame_776.bin
 GOLDEN_PATH = Path(__file__).parent / "data" / "golden_frame_776.bin"
 
@@ -44,7 +43,7 @@ class TestFrameFromBytes:
         assert len(raw) == FRAME_BYTES == 776
         decoded = frame_from_bytes(raw)
         assert decoded.shape == (MLX90640_ROWS, MLX90640_COLS)
-        # Two-level frame: both levels are exactly representable.
+        # two level frame, both levels come back exact
         np.testing.assert_array_almost_equal(original, decoded, decimal=4)
 
     def test_wrong_size_raises(self):
@@ -53,7 +52,7 @@ class TestFrameFromBytes:
 
     @pytest.mark.parametrize("size", [0, 775, 777, 1460, 3072])
     def test_any_other_size_rejected(self, size):
-        # 1460 = a fragment of an old raw frame; 3072 = old raw float32 format
+        # 1460 = piece of an old raw frame, 3072 = the old raw float32 format
         with pytest.raises(ValueError):
             frame_from_bytes(b"\x00" * size)
 
@@ -129,7 +128,7 @@ class TestFindWarmBlob:
 
     def test_ignores_single_pixel_noise(self):
         frame = make_frame()
-        frame[5, 5] = 40.0  # one hot pixel — should be filtered as noise
+        frame[5, 5] = 40.0  # one hot pixel, should get filtered as noise
         assert find_warm_blob(frame) is None
 
 

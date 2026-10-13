@@ -1,7 +1,6 @@
 """
-Unit tests for the boresight math — pure functions, no I/O, no mocking
-needed. This is the piece worth having watertight before anything else
-in this service, since every other test here depends on it being right.
+Tests for the boresight math. Plain functions, no I/O or mocking. Most
+of the other tests depend on this being right.
 """
 import pytest
 from app.boresight import (
@@ -15,7 +14,7 @@ class TestPixelToAngle:
         assert pixel_to_angle(0, MLX90640_COLS, MLX90640_FOV_DEG) == 0.0
 
     def test_full_right_edge_is_half_fov(self):
-        # offset of frame_size/2 = the very edge of the frame = half the FOV
+        # offset of frame_size/2 = edge of the frame = half the FOV
         result = pixel_to_angle(MLX90640_COLS / 2, MLX90640_COLS, MLX90640_FOV_DEG)
         assert result == pytest.approx(MLX90640_FOV_DEG / 2, abs=0.01)
 
@@ -51,14 +50,14 @@ class TestComputeBoresightError:
         assert result.confidence < 0.5
 
     def test_saturated_frame_gets_low_confidence(self):
-        # blob covering most of the frame - likely sensor saturation or
-        # something wrong, not a real tracked target at a sane distance
+        # blob covering most of the frame, probably saturation or something
+        # wrong, not a target at a normal distance
         huge_area = int(MLX90640_COLS * MLX90640_ROWS * 0.9)
         result = compute_boresight_error(16, 12, blob_area_px=huge_area)
         assert result.confidence < 0.5
 
     def test_reasonable_blob_gets_decent_confidence(self):
-        # a blob taking up a sane fraction of frame - a person at a few metres
+        # blob that's a sane fraction of the frame, a person a few metres away
         reasonable_area = int(MLX90640_COLS * MLX90640_ROWS * 0.08)
         result = compute_boresight_error(16, 12, blob_area_px=reasonable_area)
         assert result.confidence > 0.5

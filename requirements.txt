@@ -1,9 +1,8 @@
-# Upper bounds = the newest major versions this was tested with
-# (Python 3.14: numpy 2.5.4, opencv-python-headless 5.0.0.93,
-# websockets 17.2, pytest 9.1.1, pytest-asyncio 1.4.0). Raise them only
-# after re-running the tests. ws_handler(websocket) uses the one-argument
-# handler signature, valid for websockets >= 10.1 legacy and the asyncio
-# implementation that websockets.serve() returns from 14.0.
+# upper bounds = newest majors this was tested on (python 3.14: numpy 2.5.4,
+# opencv-python-headless 5.0.0.93, websockets 17.2, pytest 9.1.1,
+# pytest-asyncio 1.4.0). rerun the tests before raising them.
+# ws_handler(websocket) is the one arg handler, works on websockets >= 10.1
+# legacy and the asyncio version websockets.serve() returns from 14.0
 opencv-python-headless>=4.9.0,<6
 numpy>=1.26.0,<3
 websockets>=12.0,<18

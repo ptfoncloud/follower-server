@@ -1,17 +1,12 @@
 """
-boresight.py — pure math, no I/O. Converts a thermal blob's pixel
-position into a real angular error (degrees), using the MLX90640's
-actual confirmed field of view.
+boresight.py - pure math, no I/O. Turns a blob's pixel position into
+an angle in degrees using the MLX90640's 55 deg FOV.
 
-Kept separate from the networking/OpenCV code specifically so it's
-trivially unit-testable — this is the piece an interviewer is most
-likely to ask you to walk through, and the piece most worth having
-clean, isolated tests for.
+Kept out of the networking/OpenCV code so it's easy to test on its own.
 """
 from dataclasses import dataclass
 
-# Real, confirmed spec — Adafruit MLX90640 55-degree version (#4407),
-# the exact part in the BOM. NOT a guess.
+# Adafruit MLX90640 55 deg version (#4407), the part in the BOM
 MLX90640_FOV_DEG = 55.0
 MLX90640_COLS = 32
 MLX90640_ROWS = 24
@@ -26,11 +21,9 @@ class BoresightError:
 
 def pixel_to_angle(pixel_offset: float, frame_size: int, fov_deg: float) -> float:
     """
-    Convert a pixel offset from frame centre into a real angular offset,
-    assuming a roughly linear (small-angle) mapping across the sensor's
-    field of view. Good enough for a 55-degree FOV at this resolution —
-    NOT accurate for a fisheye/wide-angle lens, where the mapping is
-    genuinely non-linear near the edges.
+    Pixel offset from frame center -> angle, assuming a roughly linear
+    mapping across the FOV. Fine for 55 deg at this resolution, wouldn't
+    be right for a fisheye where it's non linear near the edges.
     """
     normalized = pixel_offset / (frame_size / 2.0)   # -1..1 across the frame
     return normalized * (fov_deg / 2.0)
@@ -42,10 +35,9 @@ def compute_boresight_error(
     fov_deg: float = MLX90640_FOV_DEG,
 ) -> BoresightError:
     """
-    blob_cx/cy: centroid of the detected warm blob, in pixel coordinates
-    (0,0 at top-left, matching OpenCV convention).
-    blob_area_px: blob size in pixels — used only to produce a rough
-    confidence figure, not for the angle math itself.
+    blob_cx/cy: blob centroid in pixels (0,0 top left, same as OpenCV).
+    blob_area_px: blob size in pixels, only used for the rough confidence
+    number, not the angle.
     """
     center_x = frame_cols / 2.0
     center_y = frame_rows / 2.0
@@ -56,11 +48,10 @@ def compute_boresight_error(
     pan_deg = pixel_to_angle(offset_x, frame_cols, fov_deg)
     tilt_deg = pixel_to_angle(offset_y, frame_rows, fov_deg)
 
-    # Crude confidence heuristic: a blob taking up a sane fraction of the
-    # frame (a person at a few metres) scores high; a 1-2px noise blob or
-    # a blob filling the whole frame (sensor saturation / very close
-    # object) scores low. Tune the two bounds once you have real data —
-    # these are starting points, not calibrated thresholds.
+    # Rough confidence: a blob that's a sane fraction of the frame (a
+    # person a few metres away) scores high, a 1-2 px noise blob or one
+    # filling the whole frame (saturated / something right up close)
+    # scores low. Both bounds are guesses until there's real data.
     frame_area = frame_cols * frame_rows
     area_fraction = blob_area_px / frame_area
     if area_fraction < 0.01 or area_fraction > 0.6:
