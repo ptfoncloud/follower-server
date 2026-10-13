@@ -6,16 +6,24 @@ running on Henri.
 
 ## Integration into main.cpp
 
+WiFi credentials live in `src/secrets.h`, which is gitignored. Create it
+from the committed template first:
+
+```powershell
+Copy-Item src\secrets.example.h src\secrets.h   # then edit the values
+```
+
 ```cpp
+#include "secrets.h"         // WIFI_SSID, WIFI_PASSWORD, THERMAL_SERVER_*
 #include "thermal_stream.h"
 
 ThermalStream thermal;
 
 void setup() {
     // ... existing setup ...
-    thermal.begin("YOUR_WIFI_SSID", "YOUR_WIFI_PASSWORD",
-                   "192.168.1.169",  // Henri's IP
-                   14600);           // matches UDP_LISTEN_PORT in server.py
+    thermal.begin(WIFI_SSID, WIFI_PASSWORD,
+                  THERMAL_SERVER_IP,     // Henri's IP
+                  THERMAL_SERVER_PORT);  // matches UDP_LISTEN_PORT in server.py
 }
 
 void loop() {
