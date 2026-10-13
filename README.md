@@ -5,8 +5,8 @@
 ![Tests](https://img.shields.io/badge/tests-17%2F17-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
-Runs on Henri. Receives raw MLX90640 thermal frames from the drone
-over a UDP uplink, runs OpenCV blob detection to find the tracked
+Runs on Henri. Receives MLX90640 thermal frames from the drone over a
+UDP uplink, runs OpenCV blob detection to find the tracked
 subject, and computes real boresight error — pan/tilt in actual
 degrees, using the sensor's confirmed 55° field of view, not just a
 raw pixel offset.
@@ -42,6 +42,29 @@ python -m app.server
 Point the ESP32's thermal streaming module (`esp32_thermal/` — the
 canonical, maintained copy lives in `follower-main`, mirrored here for
 reference) at Henri's IP on port 14600.
+
+## Wire format (UDP :14600)
+
+One datagram per frame, exactly **776 bytes**, little-endian:
+
+| Offset | Type | Field |
+|---|---|---|
+| 0 | float32 | `min_temp_c` — lowest finite pixel |
+| 4 | float32 | `scale_c` — °C per step, `(max - min) / 255` |
+| 8 | uint8 × 768 | `q` — row-major, 24 rows × 32 cols |
+
+`temp_c = min_temp_c + q * scale_c`, worst-case error `scale_c / 2`
+(about 0.03 °C across a 15 °C span). Anything that isn't exactly 776
+bytes with a finite, non-negative header is rejected and logged.
+
+Raw float32 frames (3072 bytes) were the original format and never
+worked: arduino-esp32's `WiFiUDP` flushes its buffer at 1460 bytes, so
+each frame arrived as three datagrams, all rejected. Decoder:
+`app/thermal_tracker.py::frame_from_bytes`. `frame_to_bytes` is a Python
+reference of the ESP32 encoder (follower-main
+`esp32_thermal/thermal_wire.h`), and `tests/data/golden_frame_776.bin`
+is real C++ encoder output that the tests decode and match
+byte-for-byte.
 
 ## Tests
 

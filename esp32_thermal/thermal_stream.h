@@ -2,7 +2,7 @@
 /*  ================================================================
     thermal_stream — MLX90640 read + WiFi UDP frame streaming.
 
-    HONEST NOTE ON SCOPE, read before wiring this in:
+    HONEST NOTE ON SCOPE if you use this code, read before wiring this in:
     The main follower firmware (main.cpp) already has its hands full —
     SPI to Pixy2, UART to the FC, and a 10Hz control loop with hard
     timing requirements. Adding I2C (MLX90640) AND WiFi (UDP send) to
@@ -24,6 +24,7 @@
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <Adafruit_MLX90640.h>
+#include "thermal_wire.h"
 
 #define MLX_COLS 32
 #define MLX_ROWS 24
@@ -74,10 +75,15 @@ public:
             return;
         }
 
-        // Send raw frame as-is: 768 little-endian float32s, matching
-        // frame_from_bytes() on the server side exactly.
+        // 776-byte quantized frame (see thermal_wire.h). Must stay under
+        // WiFiUDP's 1460-byte tx buffer or it gets split across datagrams.
+        static_assert(THERMAL_WIRE_FRAME_BYTES <= 1460, "frame must fit one WiFiUDP datagram");
+        if (!thermal_wire_encode(frameBuf, wireBuf)) {
+            Serial.println("[THERMAL] Frame has no finite pixels, skipping");
+            return;
+        }
         udp.beginPacket(destIp, destPort);
-        udp.write((uint8_t*)frameBuf, sizeof(frameBuf));
+        udp.write(wireBuf, sizeof(wireBuf));
         udp.endPacket();
     }
 
@@ -91,4 +97,5 @@ private:
     bool ready = false;
     uint32_t lastReadMs = 0;
     float frameBuf[MLX_FRAME_FLOATS];
+    uint8_t wireBuf[THERMAL_WIRE_FRAME_BYTES];
 };
