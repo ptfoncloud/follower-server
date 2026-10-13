@@ -1,16 +1,16 @@
-# Thermal Streaming Module
+# Thermal streaming
 
-Adds MLX90640 reading + WiFi UDP streaming to the ESP32 companion
-controller, feeding the `follower_server` OpenCV/boresight service
-running on Henri.
+MLX90640 reading + wifi UDP streaming for the ESP32, feeds the
+follower-server boresight service on Henri. Not hooked into main.cpp
+yet.
 
-## Integration into main.cpp
+## Hooking it into main.cpp
 
-WiFi credentials live in `src/secrets.h`, which is gitignored. Create it
-from the committed template first:
+Wifi creds go in `src/secrets.h` (gitignored). Make it from the template
+first:
 
 ```powershell
-Copy-Item src\secrets.example.h src\secrets.h   # then edit the values
+Copy-Item src\secrets.example.h src\secrets.h   # then fill it in
 ```
 
 ```cpp
@@ -22,22 +22,21 @@ ThermalStream thermal;
 void setup() {
     // ... existing setup ...
     thermal.begin(WIFI_SSID, WIFI_PASSWORD,
-                  THERMAL_SERVER_IP,     // Henri's IP
-                  THERMAL_SERVER_PORT);  // matches UDP_LISTEN_PORT in server.py
+                  THERMAL_SERVER_IP,     // Henri
+                  THERMAL_SERVER_PORT);  // UDP_LISTEN_PORT in server.py
 }
 
 void loop() {
-    // ... existing tracking/MAVLink loop ...
-    thermal.update();  // internally rate-limited, safe to call every iteration
+    // ... existing loop ...
+    thermal.update();  // rate limits itself, fine to call every loop
 }
 ```
 
 ### Build setup
 
-`thermal_stream.h` needs the Adafruit MLX90640 library, and PlatformIO's
-default dependency finder doesn't discover framework libraries (WiFi,
-Wire, SPI) through headers outside `src/`. A configuration that was
-compile-tested for `esp32dev`:
+Needs the Adafruit MLX90640 lib. PlatformIO's dependency finder doesn't
+pick up the framework libs (WiFi, Wire, SPI) through headers outside
+`src/`, so list them. This config compiles for esp32dev:
 
 ```ini
 lib_deps =
@@ -49,41 +48,37 @@ lib_ldf_mode = deep+
 build_flags = -I esp32_thermal
 ```
 
-## Wire format (one UDP datagram per frame, 776 bytes)
+## Frame format (one UDP packet per frame, 776 bytes)
 
 | Offset | Type | Field |
 |---|---|---|
-| 0 | float32 LE | `min_temp_c` — lowest finite pixel |
-| 4 | float32 LE | `scale_c` — °C per step, `(max - min) / 255` |
-| 8 | uint8 × 768 | `q` — row-major 24 × 32 |
+| 0 | float32 LE | `min_temp_c`, lowest finite pixel |
+| 4 | float32 LE | `scale_c`, °C per step = `(max - min) / 255` |
+| 8 | uint8 x 768 | `q`, row major 24 x 32 |
 
-`temp_c = min_temp_c + q * scale_c`. Worst-case error is `scale_c / 2`
-(about 0.03 °C across a 15 °C span). Non-finite pixels are sent as
-`q = 0` (the coldest value) so a bad read can't look like a warm
-target. Encoder: `thermal_wire.h`, tested by
-`test/native/test_thermal_wire.cpp`. Decoder: follower-server's
-`app/thermal_tracker.py::frame_from_bytes`.
+`temp_c = min_temp_c + q * scale_c`. Worst case error is `scale_c / 2`
+(about 0.03 °C over a 15 °C range). NaN/inf pixels get sent as `q = 0`
+(coldest) so a bad read can't look like a warm target. Encoder is
+`thermal_wire.h`, tested in `test/native/test_thermal_wire.cpp`. Decoder
+is `frame_from_bytes` in follower-server's `app/thermal_tracker.py`.
 
-**Why not raw floats:** 768 float32 is 3072 bytes, and arduino-esp32's
-`WiFiUDP` sends its buffer as a datagram every time it fills to 1460
-bytes (`WiFiUdp.cpp`, `write(uint8_t)`). A raw frame left as three
-datagrams (1460 + 1460 + 152 bytes), and the server rejected every one
-as the wrong size. Verified in arduino-esp32 2.0.17 (what PlatformIO's
-`espressif32` 7.x installs) and in current master's `NetworkUdp.cpp`.
+Why not raw floats: 768 float32 = 3072 bytes, and arduino-esp32's
+WiFiUDP sends a packet every time its 1460 byte buffer fills
+(`write(uint8_t)` in `WiFiUdp.cpp`). So a raw frame went out as 3
+packets (1460 + 1460 + 152) and the server threw all of them out for
+being the wrong size. Same code in arduino-esp32 2.0.17 (what PlatformIO
+espressif32 7.x installs) and current master (`NetworkUdp.cpp`).
 
 ## Wiring
 
-MLX90640 shares the I2C bus (SDA/SCL) — separate from Pixy2's SPI bus
-and the FC's UART, so no pin conflicts. Standard ESP32 I2C default pins
-(GPIO 21 SDA, GPIO 22 SCL) unless you've remapped them elsewhere.
+MLX90640 on the ESP32's I2C, default pins GPIO21 SDA / GPIO22 SCL.
+Separate from the pixy's SPI and the FC uart so nothing conflicts.
 
-## Before trusting this in flight
+## Before flying with it
 
-Bench test with the full stack running — Pixy2 tracking active, FC
-connected, thermal streaming active — and confirm the control loop's
-10Hz timing doesn't degrade. WiFi calls occasionally block; whether
-that ever delays a velocity command to the FC hasn't been measured. If
-it does, the real fix is running thermal streaming on the ESP32's
-second core via `xTaskCreatePinnedToCore` so it physically cannot
-stall the flight-critical loop — worth doing proactively rather than
-finding out the hard way mid-flight.
+Bench test with everything running (pixy tracking, FC connected,
+thermal streaming) and make sure the 10 Hz control loop doesn't slow
+down. Wifi calls can block sometimes and nobody's measured whether that
+ever delays a velocity command. If it does, move the thermal stuff to
+the second core with `xTaskCreatePinnedToCore` so it can't stall the
+flight loop. Probably worth doing before it flies either way.
